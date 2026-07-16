@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Migraine Journal</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root { --primary: #6B46C1; --accent: #9F7AEA; --danger: #E53E3E; --bg: #f0f2f5; --bg-gradient-start: #f0f2f5; --bg-gradient-end: #e2e8f0; --card-bg: #ffffff; --text: #333; --border: #eee; --muted: #777; --stat-bg: #f8f9fa; --input-bg: white; --sev1: #48BB78; --sev2: #ECC94B; --sev3: #ED8936; --sev4: #E53E3E; --sev5: #9B2C2C; }
+        [data-theme="dark"] { --primary: #9F7AEA; --accent: #B794F4; --danger: #FC8181; --bg: #0f172a; --bg-gradient-start: #0f172a; --bg-gradient-end: #1e293b; --card-bg: #1e293b; --text: #f1f5f9; --border: #334155; --muted: #94a3b8; --stat-bg: #273549; --input-bg: #334155; --sev1: #68D391; --sev2: #F6E05E; --sev3: #F6AD55; --sev4: #FC8181; --sev5: #FEB2B2; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px; background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: var(--text); margin: 0; min-height: 100vh; transition: background 0.3s, color 0.3s;
+        }
+
+        .card {
+            background: var(--card-bg); padding: 20px; border-radius: 25px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+            width: 100%; max-width: 420px; box-sizing: border-box; border: 1px solid var(--border);
+            transition: background 0.3s, border-color 0.3s;
+        }
+
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .header-left { display: flex; gap: 8px; }
+        .theme-btn, .settings-btn { background: var(--stat-bg); border: 1px solid var(--border); color: var(--muted); font-size: 1rem; padding: 4px 10px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease; line-height: 1; }
+        .settings-btn { font-size: 0.65rem; font-weight: 600; }
+        .theme-btn:active, .settings-btn:active { transform: scale(0.9); }
+        .nav-tabs { display: flex; gap: 4px; }
+        .nav-tab { background: var(--stat-bg); border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+        .nav-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        h2 { text-align: center; margin-top: 0; margin-bottom: 20px; font-weight: 800; }
+
+        .config-panel { margin-bottom: 15px; padding: 12px; background: var(--stat-bg); border: 1px solid var(--border); border-radius: 12px; }
+        .config-panel label { font-size: 0.7rem; font-weight: bold; color: var(--muted); display: block; margin-top: 8px; }
+        .config-panel label:first-child { margin-top: 0; }
+        .config-panel input[type="text"] { margin-bottom: 8px; width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; background: var(--input-bg); color: var(--text); }
+        .config-panel button { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        /* Calendar View */
+        .calendar { margin-bottom: 20px; }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .cal-title { font-weight: 700; font-size: 1rem; }
+        .cal-nav { background: var(--stat-bg); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-dow { text-align: center; font-size: 0.6rem; font-weight: 700; color: var(--muted); padding: 4px 0; }
+        .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; }
+        .cal-day:hover { border-color: var(--accent); }
+        .cal-day.today { border-color: var(--primary); }
+        .cal-day.empty { cursor: default; }
+        .cal-day.empty:hover { border-color: transparent; }
+        .cal-day.sev1 { background: var(--sev1); color: white; }
+        .cal-day.sev2 { background: var(--sev2); color: #333; }
+        .cal-day.sev3 { background: var(--sev3); color: white; }
+        .cal-day.sev4 { background: var(--sev4); color: white; }
+        .cal-day.sev5 { background: var(--sev5); color: white; }
+
+        .cal-legend { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.6rem; color: var(--muted); }
+        .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+        /* Entry Form */
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; display: block; }
+
+        .severity-picker { display: flex; gap: 8px; justify-content: center; }
+        .sev-btn { width: 48px; height: 48px; border-radius: 14px; border: 2px solid var(--border); font-size: 1.2rem; font-weight: 800; cursor: pointer; transition: all 0.15s; background: var(--stat-bg); color: var(--text); }
+        .sev-btn.selected { border-width: 3px; transform: scale(1.1); color: white; }
+        .sev-btn[data-sev="1"].selected { background: var(--sev1); border-color: var(--sev1); }
+        .sev-btn[data-sev="2"].selected { background: var(--sev2); border-color: var(--sev2); color: #333; }
+        .sev-btn[data-sev="3"].selected { background: var(--sev3); border-color: var(--sev3); }
+        .sev-btn[data-sev="4"].selected { background: var(--sev4); border-color: var(--sev4); }
+        .sev-btn[data-sev="5"].selected { background: var(--sev5); border-color: var(--sev5); }
+
+        .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip { padding: 8px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: var(--stat-bg); border: 1px solid var(--border); color: var(--text); cursor: pointer; transition: all 0.15s; }
+        .chip.selected { background: var(--primary); color: white; border-color: var(--primary); }
+
+        input[type="text"], input[type="number"], input[type="date"], textarea {
+            width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 12px;
+            font-size: 1rem; box-sizing: border-box; background: var(--input-bg); color: var(--text); transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus { border-color: var(--accent); outline: none; }
+        textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: transform 0.15s ease; }
+        .btn-submit:active { transform: scale(0.95); }
+        .btn-cancel { width: 100%; padding: 12px; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 14px; margin-top: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+
+        /* History */
+        .history-item { background: var(--stat-bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .hist-left { display: flex; align-items: center; gap: 10px; }
+        .hist-sev { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: white; font-size: 0.9rem; }
+        .hist-date { font-weight: 600; font-size: 0.9rem; }
+        .hist-detail { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .stat-box { background: var(--stat-bg); padding: 14px; border-radius: 18px; text-align: center; border: 1px solid var(--border); }
+        .stat-label { font-size: 0.65rem; color: var(--muted); font-weight: bold; text-transform: uppercase; }
+        .stat-value { font-size: 1.5rem; font-weight: 800; margin: 4px 0; }
+
+        .queue-banner { background: #fef3cd; border: 1px solid #ffc107; border-radius: 12px; padding: 10px 14px; margin-bottom: 15px; font-size: 0.8rem; font-weight: 600; color: #856404; display: none; text-align: center; }
+        [data-theme="dark"] .queue-banner { background: #3d2e00; border-color: #ffc107; color: #ffc107; }
+
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            padding: 12px 24px; border-radius: 50px; font-size: 0.85rem; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease; white-space: nowrap;
+        }
+        .toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.success { background: #e6f4ea; color: #137333; }
+        .toast.error { background: #fce8e6; color: #c5221f; }
+        .toast.info { background: #e8f0fe; color: #1967d2; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header-row">
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showView('calendar')">Calendar</button>
+            <button class="nav-tab" onclick="showView('history')">History</button>
+            <button class="nav-tab" onclick="showView('stats')">Stats</button>
+        </div>
+        <div class="header-left">
+            <button class="theme-btn" id="themeToggle" onclick="toggleTheme()"></button>
+            <button class="settings-btn" onclick="document.getElementById('cfgPanel').toggleAttribute('hidden')">SETTINGS</button>
+        </div>
+    </div>
+
+    <div id="cfgPanel" class="config-panel" hidden>
+        <label>Apps Script URL</label>
+        <input type="text" id="urlCfg" placeholder="Paste your deployed Apps Script URL">
+        <button onclick="saveSettings()">Save Settings</button>
+    </div>
+
+    <h2>Migraine Journal</h2>
+
+    <div id="queueBanner" class="queue-banner"></div>
+
+    <!-- CALENDAR VIEW -->
+    <div id="viewCalendar" class="form-section active">
+        <div class="calendar">
+            <div class="cal-header">
+                <button class="cal-nav" onclick="changeMonth(-1)">&lt;</button>
+                <span id="calTitle" class="cal-title"></span>
+                <button class="cal-nav" onclick="changeMonth(1)">&gt;</button>
+            </div>
+            <div class="cal-grid">
+                <div class="cal-dow">S</div><div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow">S</div>
+                <div id="calDays"></div>
+            </div>
+            <div class="cal-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--sev1)"></div>Mild</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--sev2)"></div>Low</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--sev3)"></div>Moderate</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--sev4)"></div>Severe</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--sev5)"></div>Extreme</div>
+            </div>
+        </div>
+        <button class="btn-submit" onclick="openEntryForm()">+ Log Migraine</button>
+    </div>
+
+    <!-- ENTRY FORM -->
+    <div id="viewEntry" class="form-section">
+        <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" id="entryDate">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Severity (1-5)</label>
+            <div class="severity-picker">
+                <button class="sev-btn" data-sev="1" onclick="pickSev(1)">1</button>
+                <button class="sev-btn" data-sev="2" onclick="pickSev(2)">2</button>
+                <button class="sev-btn" data-sev="3" onclick="pickSev(3)">3</button>
+                <button class="sev-btn" data-sev="4" onclick="pickSev(4)">4</button>
+                <button class="sev-btn" data-sev="5" onclick="pickSev(5)">5</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Symptoms</label>
+            <div class="chip-grid" id="symptomChips">
+                <span class="chip" data-val="Aura">Aura</span>
+                <span class="chip" data-val="Nausea">Nausea</span>
+                <span class="chip" data-val="Light Sensitivity">Light Sensitivity</span>
+                <span class="chip" data-val="Sound Sensitivity">Sound Sensitivity</span>
+                <span class="chip" data-val="Throbbing">Throbbing</span>
+                <span class="chip" data-val="Neck Pain">Neck Pain</span>
+                <span class="chip" data-val="Dizziness">Dizziness</span>
+                <span class="chip" data-val="Brain Fog">Brain Fog</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Triggers</label>
+            <div class="chip-grid" id="triggerChips">
+                <span class="chip" data-val="Poor Sleep">Poor Sleep</span>
+                <span class="chip" data-val="Stress">Stress</span>
+                <span class="chip" data-val="Weather">Weather</span>
+                <span class="chip" data-val="Caffeine">Caffeine</span>
+                <span class="chip" data-val="Alcohol">Alcohol</span>
+                <span class="chip" data-val="Skipped Meal">Skipped Meal</span>
+                <span class="chip" data-val="Screen Time">Screen Time</span>
+                <span class="chip" data-val="Dehydration">Dehydration</span>
+                <span class="chip" data-val="Exercise">Exercise</span>
+                <span class="chip" data-val="Hormonal">Hormonal</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Duration (hours)</label>
+            <input type="number" id="entryDuration" placeholder="e.g. 4" min="0" max="72" step="0.5">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Medications</label>
+            <div class="chip-grid" id="medChips">
+                <span class="chip" data-val="Ibuprofen">Ibuprofen</span>
+                <span class="chip" data-val="Acetaminophen">Acetaminophen</span>
+                <span class="chip" data-val="Excedrin">Excedrin</span>
+                <span class="chip" data-val="Sumatriptan">Sumatriptan</span>
+                <span class="chip" data-val="Rizatriptan">Rizatriptan</span>
+                <span class="chip" data-val="Caffeine">Caffeine</span>
+                <span class="chip" data-val="None">None</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea id="entryNotes" placeholder="Any additional details..."></textarea>
+        </div>
+        <button class="btn-submit" onclick="submitEntry()">Save Entry</button>
+        <button class="btn-cancel" onclick="showView('calendar')">Cancel</button>
+    </div>
+
+    <!-- HISTORY VIEW -->
+    <div id="viewHistory" class="form-section">
+        <div id="historyList"></div>
+        <p style="text-align:center; font-size:0.75rem; color:var(--muted);" id="historyEmpty">Loading...</p>
+    </div>
+
+    <!-- STATS VIEW -->
+    <div id="viewStats" class="form-section">
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">This Month</div>
+                <div id="statMonth" class="stat-value">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Last 30 Days</div>
+                <div id="stat30" class="stat-value">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Severity</div>
+                <div id="statSev" class="stat-value">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Top Trigger</div>
+                <div id="statTrigger" class="stat-value" style="font-size:0.9rem;">-</div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Trigger Frequency (Last 90 Days)</label>
+            <div id="triggerStats"></div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+    const LS_PREFIX = 'mj_';
+    function lsGet(key) { return localStorage.getItem(LS_PREFIX + key); }
+    function lsSet(key, val) { localStorage.setItem(LS_PREFIX + key, val); }
+    function getScriptUrl() { return lsGet('script_url') || ''; }
+
+    let entries = [];
+    let currentSeverity = 0;
+    let calYear, calMonth;
+
+    // --- Theme ---
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        lsSet('theme', theme);
+    }
+    window.toggleTheme = () => {
+        const current = lsGet('theme') || 'light';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    };
+    applyTheme(lsGet('theme') || 'light');
+
+    // --- Navigation ---
+    function showView(view) {
+        document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+        if (view === 'calendar') {
+            document.getElementById('viewCalendar').classList.add('active');
+            document.querySelectorAll('.nav-tab')[0].classList.add('active');
+            renderCalendar();
+        } else if (view === 'history') {
+            document.getElementById('viewHistory').classList.add('active');
+            document.querySelectorAll('.nav-tab')[1].classList.add('active');
+            renderHistory();
+        } else if (view === 'stats') {
+            document.getElementById('viewStats').classList.add('active');
+            document.querySelectorAll('.nav-tab')[2].classList.add('active');
+            renderStats();
+        } else if (view === 'entry') {
+            document.getElementById('viewEntry').classList.add('active');
+        }
+    }
+
+    // --- Settings ---
+    window.saveSettings = () => {
+        lsSet('script_url', document.getElementById('urlCfg').value.trim());
+        showToast('Saved!', 'success');
+        document.getElementById('cfgPanel').setAttribute('hidden', '');
+        loadData();
+    };
+
+    // --- Calendar ---
+    function initCalendar() {
+        const now = new Date();
+        calYear = now.getFullYear();
+        calMonth = now.getMonth();
+        renderCalendar();
+    }
+
+    function changeMonth(delta) {
+        calMonth += delta;
+        if (calMonth > 11) { calMonth = 0; calYear++; }
+        if (calMonth < 0) { calMonth = 11; calYear--; }
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        document.getElementById('calTitle').textContent = months[calMonth] + ' ' + calYear;
+
+        const container = document.getElementById('calDays');
+        container.innerHTML = '';
+        const grid = container.parentElement;
+        const existingDays = grid.querySelectorAll('.cal-day');
+        existingDays.forEach(d => d.remove());
+
+        const firstDay = new Date(calYear, calMonth, 1).getDay();
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        const today = new Date();
+
+        const entryMap = {};
+        entries.forEach(e => { entryMap[e.date] = e; });
+
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'cal-day empty';
+            grid.appendChild(empty);
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            const dayEl = document.createElement('div');
+            dayEl.className = 'cal-day';
+            dayEl.textContent = d;
+
+            if (entryMap[dateStr]) {
+                dayEl.classList.add('sev' + entryMap[dateStr].severity);
+            }
+            if (today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === d) {
+                dayEl.classList.add('today');
+            }
+
+            dayEl.onclick = () => openEntryForm(dateStr);
+            grid.appendChild(dayEl);
+        }
+    }
+
+    // --- Entry Form ---
+    function openEntryForm(date) {
+        showView('entry');
+        const dateInput = document.getElementById('entryDate');
+        dateInput.value = date || new Date().toISOString().split('T')[0];
+
+        currentSeverity = 0;
+        document.querySelectorAll('.sev-btn').forEach(b => b.classList.remove('selected'));
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+        document.getElementById('entryDuration').value = '';
+        document.getElementById('entryNotes').value = '';
+
+        const existing = entries.find(e => e.date === dateInput.value);
+        if (existing) {
+            pickSev(existing.severity);
+            if (existing.symptoms) existing.symptoms.split(',').forEach(s => selectChip('symptomChips', s.trim()));
+            if (existing.triggers) existing.triggers.split(',').forEach(t => selectChip('triggerChips', t.trim()));
+            if (existing.medications) existing.medications.split(',').forEach(m => selectChip('medChips', m.trim()));
+            if (existing.duration) document.getElementById('entryDuration').value = existing.duration;
+            if (existing.notes) document.getElementById('entryNotes').value = existing.notes;
+        }
+    }
+
+    function selectChip(containerId, val) {
+        const chips = document.getElementById(containerId).querySelectorAll('.chip');
+        chips.forEach(c => { if (c.dataset.val === val) c.classList.add('selected'); });
+    }
+
+    window.pickSev = (n) => {
+        currentSeverity = n;
+        document.querySelectorAll('.sev-btn').forEach(b => {
+            b.classList.toggle('selected', parseInt(b.dataset.sev) === n);
+        });
+    };
+
+    document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => chip.classList.toggle('selected'));
+    });
+
+    function getSelectedChips(containerId) {
+        const selected = [];
+        document.getElementById(containerId).querySelectorAll('.chip.selected').forEach(c => selected.push(c.dataset.val));
+        return selected.join(',');
+    }
+
+    async function submitEntry() {
+        const date = document.getElementById('entryDate').value;
+        if (!date) { showToast('Select a date', 'error'); return; }
+        if (!currentSeverity) { showToast('Select severity', 'error'); return; }
+
+        const entry = {
+            date: date,
+            severity: currentSeverity,
+            symptoms: getSelectedChips('symptomChips'),
+            triggers: getSelectedChips('triggerChips'),
+            duration: document.getElementById('entryDuration').value || '',
+            medications: getSelectedChips('medChips'),
+            notes: document.getElementById('entryNotes').value.trim()
+        };
+
+        const idx = entries.findIndex(e => e.date === date);
+        if (idx >= 0) entries[idx] = entry;
+        else entries.push(entry);
+        entries.sort((a, b) => b.date.localeCompare(a.date));
+        lsSet('entries', JSON.stringify(entries));
+
+        showView('calendar');
+        showToast('Syncing...', 'info');
+
+        try {
+            const url = getScriptUrl();
+            if (!url) { pushToQueue(entry); return; }
+            const params = new URLSearchParams({ action: 'log', ...entry });
+            const resp = await fetch(url + '?' + params);
+            const data = await resp.json();
+            if (data.error) showToast('Error: ' + data.error, 'error');
+            else showToast('Saved!', 'success');
+        } catch (e) {
+            pushToQueue(entry);
+        }
+    }
+
+    // --- Offline Queue ---
+    function getQueue() { try { return JSON.parse(lsGet('offline_queue') || '[]'); } catch { return []; } }
+    function saveQueue(q) { lsSet('offline_queue', JSON.stringify(q)); updateQueueUI(); }
+    function pushToQueue(entry) {
+        const q = getQueue(); q.push(entry); saveQueue(q);
+        showToast('Saved offline - will sync later', 'info');
+    }
+    function updateQueueUI() {
+        const q = getQueue();
+        const banner = document.getElementById('queueBanner');
+        if (q.length > 0) { banner.textContent = q.length + ' entry pending sync'; banner.style.display = 'block'; }
+        else { banner.style.display = 'none'; }
+    }
+    async function flushQueue() {
+        const url = getScriptUrl();
+        if (!url) return;
+        const q = getQueue();
+        if (q.length === 0) return;
+        const remaining = [];
+        for (const entry of q) {
+            try {
+                const params = new URLSearchParams({ action: 'log', ...entry });
+                const resp = await fetch(url + '?' + params);
+                const data = await resp.json();
+                if (data.error) remaining.push(entry);
+            } catch { remaining.push(entry); }
+        }
+        saveQueue(remaining);
+        if (remaining.length === 0 && q.length > 0) showToast('Queue synced!', 'success');
+    }
+
+    // --- History ---
+    function renderHistory() {
+        const list = document.getElementById('historyList');
+        const empty = document.getElementById('historyEmpty');
+        list.innerHTML = '';
+        if (entries.length === 0) { empty.textContent = 'No entries yet'; return; }
+        empty.textContent = '';
+
+        entries.slice(0, 30).forEach(e => {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.onclick = () => openEntryForm(e.date);
+
+            const sevColors = { 1: 'var(--sev1)', 2: 'var(--sev2)', 3: 'var(--sev3)', 4: 'var(--sev4)', 5: 'var(--sev5)' };
+            const details = [e.symptoms, e.triggers].filter(Boolean).join(' | ');
+
+            item.innerHTML = '<div class="hist-left"><div class="hist-sev" style="background:' + sevColors[e.severity] + '">' + e.severity + '</div><div><div class="hist-date">' + formatDate(e.date) + '</div><div class="hist-detail">' + (details || 'No details') + '</div></div></div>';
+            list.appendChild(item);
+        });
+    }
+
+    function formatDate(dateStr) {
+        const d = new Date(dateStr + 'T12:00:00');
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // --- Stats ---
+    function renderStats() {
+        const now = new Date();
+        const thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        const monthEntries = entries.filter(e => e.date.startsWith(thisMonth));
+        document.getElementById('statMonth').textContent = monthEntries.length;
+
+        const cutoff30 = new Date(); cutoff30.setDate(cutoff30.getDate() - 30);
+        const cutoffStr = cutoff30.toISOString().split('T')[0];
+        const last30 = entries.filter(e => e.date >= cutoffStr);
+        document.getElementById('stat30').textContent = last30.length;
+
+        if (entries.length > 0) {
+            const avgSev = entries.reduce((sum, e) => sum + (parseInt(e.severity) || 0), 0) / entries.length;
+            document.getElementById('statSev').textContent = avgSev.toFixed(1);
+        }
+
+        const cutoff90 = new Date(); cutoff90.setDate(cutoff90.getDate() - 90);
+        const cutoff90Str = cutoff90.toISOString().split('T')[0];
+        const last90 = entries.filter(e => e.date >= cutoff90Str);
+
+        const triggerCounts = {};
+        last90.forEach(e => {
+            if (e.triggers) e.triggers.split(',').forEach(t => {
+                t = t.trim();
+                if (t) triggerCounts[t] = (triggerCounts[t] || 0) + 1;
+            });
+        });
+
+        const sorted = Object.entries(triggerCounts).sort((a, b) => b[1] - a[1]);
+        document.getElementById('statTrigger').textContent = sorted.length > 0 ? sorted[0][0] : '-';
+
+        const statsDiv = document.getElementById('triggerStats');
+        statsDiv.innerHTML = '';
+        if (sorted.length === 0) { statsDiv.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;">Not enough data yet</p>'; return; }
+
+        const maxCount = sorted[0][1];
+        sorted.slice(0, 8).forEach(([trigger, count]) => {
+            const pct = Math.round((count / maxCount) * 100);
+            statsDiv.innerHTML += '<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;"><span>' + trigger + '</span><span>' + count + 'x</span></div><div style="background:var(--border);border-radius:4px;height:8px;margin-top:4px;"><div style="background:var(--primary);height:100%;border-radius:4px;width:' + pct + '%;"></div></div></div>';
+        });
+    }
+
+    // --- Data Load ---
+    async function loadData() {
+        const cached = lsGet('entries');
+        if (cached) { try { entries = JSON.parse(cached); } catch { entries = []; } }
+        renderCalendar();
+
+        const url = getScriptUrl();
+        if (!url) return;
+        try {
+            const resp = await fetch(url + '?action=list&months=12');
+            const data = await resp.json();
+            if (data.entries) {
+                entries = data.entries;
+                lsSet('entries', JSON.stringify(entries));
+                renderCalendar();
+            }
+        } catch (e) { /* offline, use cache */ }
+    }
+
+    // --- Toast ---
+    function showToast(msg, type) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = 'toast ' + type;
+        requestAnimationFrame(() => toast.classList.add('visible'));
+        setTimeout(() => toast.classList.remove('visible'), 3500);
+    }
+
+    // --- Init ---
+    window.onload = function() {
+        document.getElementById('urlCfg').value = getScriptUrl();
+        if (!getScriptUrl()) document.getElementById('cfgPanel').removeAttribute('hidden');
+        initCalendar();
+        updateQueueUI();
+        loadData();
+        flushQueue();
+    };
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+    navigator.serviceWorker.ready.then(reg => reg.active.postMessage('getVersion'));
+    navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data.type === 'version') document.getElementById('app-version').textContent = 'V' + event.data.version;
+    });
+}
+</script>
+<div id="app-version" style="text-align:center; margin-top:1rem; font-size:0.65rem; color:var(--muted); font-weight:600;">V1.0.0</div>
+</body>
+</html>
