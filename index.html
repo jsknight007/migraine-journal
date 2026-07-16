@@ -153,9 +153,8 @@
                 <span id="calTitle" class="cal-title"></span>
                 <button class="cal-nav" onclick="changeMonth(1)">&gt;</button>
             </div>
-            <div class="cal-grid">
+            <div class="cal-grid" id="calGrid">
                 <div class="cal-dow">S</div><div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow">S</div>
-                <div id="calDays"></div>
             </div>
             <div class="cal-legend">
                 <div class="legend-item"><div class="legend-dot" style="background:var(--sev1)"></div>Mild</div>
@@ -341,11 +340,8 @@
         const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         document.getElementById('calTitle').textContent = months[calMonth] + ' ' + calYear;
 
-        const container = document.getElementById('calDays');
-        container.innerHTML = '';
-        const grid = container.parentElement;
-        const existingDays = grid.querySelectorAll('.cal-day');
-        existingDays.forEach(d => d.remove());
+        const grid = document.getElementById('calGrid');
+        grid.querySelectorAll('.cal-day').forEach(d => d.remove());
 
         const firstDay = new Date(calYear, calMonth, 1).getDay();
         const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
