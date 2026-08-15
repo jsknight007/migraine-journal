@@ -10,6 +10,18 @@ function getSheet() {
   return SpreadsheetApp.openById(SPREADSHEET_ID).getActiveSheet();
 }
 
+/**
+ * Sheets auto-parses "yyyy-MM-dd" strings into Date objects, so a date cell
+ * reads back as a Date rather than the string the app expects. Normalize to
+ * a plain "yyyy-MM-dd" string regardless of how the cell is stored.
+ */
+function toDateStr(v) {
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return String(v);
+}
+
 function doGet(e) {
   try {
     const params = (e && e.parameter) ? e.parameter : {};
@@ -78,7 +90,7 @@ function handleDelete(params) {
   const data = sheet.getDataRange().getValues();
 
   for (var i = data.length - 1; i >= 1; i--) {
-    if (data[i][0] === date) {
+    if (toDateStr(data[i][0]) === date) {
       sheet.deleteRow(i + 1);
       return jsonResponse({ status: "success", deleted: date });
     }
@@ -97,7 +109,7 @@ function handleList(params) {
     var row = data[i];
     if (row[0] === "") continue;
     entries.push({
-      date: row[0],
+      date: toDateStr(row[0]),
       severity: row[1],
       symptoms: row[2],
       triggers: row[3],

@@ -567,7 +567,7 @@
         try {
             const resp = await fetch(url + '?action=list&months=12');
             const data = await resp.json();
-            if (data.entries) {
+            if (data.entries && data.entries.length) {
                 entries = data.entries;
                 lsSet('entries', JSON.stringify(entries));
                 renderCalendar();
