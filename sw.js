@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 const CACHE_NAME = 'migraine-journal-v' + APP_VERSION;
 const SHELL_FILES = ['index.html', 'manifest.json'];
 
