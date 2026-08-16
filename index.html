@@ -232,7 +232,7 @@
             <textarea id="entryNotes" placeholder="Any additional details..."></textarea>
         </div>
         <button class="btn-submit" onclick="submitEntry()">Save Entry</button>
-        <button class="btn-cancel" onclick="showView('calendar')">Cancel</button>
+        <button class="btn-cancel" onclick="cancelEntry()">Cancel</button>
     </div>
 
     <!-- HISTORY VIEW -->
@@ -279,6 +279,7 @@
     let entries = [];
     let currentSeverity = 0;
     let calYear, calMonth;
+    let entryReturnView = 'calendar'; // view to return to after Save/Cancel
 
     // --- Theme ---
     function applyTheme(theme) {
@@ -375,7 +376,12 @@
     }
 
     // --- Entry Form ---
-    function openEntryForm(date) {
+    function cancelEntry() {
+        showView(entryReturnView);
+    }
+
+    function openEntryForm(date, returnView) {
+        entryReturnView = returnView || 'calendar';
         showView('entry');
         const dateInput = document.getElementById('entryDate');
         dateInput.value = date || new Date().toISOString().split('T')[0];
@@ -440,7 +446,7 @@
         entries.sort((a, b) => b.date.localeCompare(a.date));
         lsSet('entries', JSON.stringify(entries));
 
-        showView('calendar');
+        showView(entryReturnView);
         showToast('Syncing...', 'info');
 
         try {
@@ -498,7 +504,7 @@
         entries.slice(0, 30).forEach(e => {
             const item = document.createElement('div');
             item.className = 'history-item';
-            item.onclick = () => openEntryForm(e.date);
+            item.onclick = () => openEntryForm(e.date, 'history');
 
             const sevColors = { 1: 'var(--sev1)', 2: 'var(--sev2)', 3: 'var(--sev3)', 4: 'var(--sev4)', 5: 'var(--sev5)' };
             const details = [e.symptoms, e.triggers].filter(Boolean).join(' | ');
@@ -629,6 +635,6 @@ if ('serviceWorker' in navigator) {
     });
 }
 </script>
-<div id="app-version" style="text-align:center; margin-top:1rem; font-size:0.65rem; color:var(--muted); font-weight:600;">V1.0.3</div>
+<div id="app-version" style="text-align:center; margin-top:1rem; font-size:0.65rem; color:var(--muted); font-weight:600;">V1.0.4</div>
 </body>
 </html>
