@@ -562,10 +562,30 @@
         });
     }
 
+    // Normalize any date the backend returns to a bare "yyyy-MM-dd" key.
+    // History's formatDate() is tolerant, but the calendar and entry-form
+    // lookups do exact string matching, so they need a canonical key.
+    function toDateKey(raw) {
+        if (raw == null) return '';
+        const s = String(raw);
+        // Bare date OR ISO timestamp ("2026-02-25T00:00:00.000Z") — take the date part.
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return m[1] + '-' + m[2] + '-' + m[3];
+        // US-style "2/25/2026" or anything else parseable — reformat TZ-safely.
+        const d = new Date(s);
+        if (!isNaN(d)) {
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+        return s;
+    }
+
     // --- Data Load ---
     async function loadData() {
         const cached = lsGet('entries');
-        if (cached) { try { entries = JSON.parse(cached); } catch { entries = []; } }
+        if (cached) {
+            try { entries = JSON.parse(cached).map(e => ({ ...e, date: toDateKey(e.date) })); }
+            catch { entries = []; }
+        }
         renderCalendar();
 
         const url = getScriptUrl();
@@ -574,7 +594,7 @@
             const resp = await fetch(url + '?action=list&months=12');
             const data = await resp.json();
             if (data.entries && data.entries.length) {
-                entries = data.entries;
+                entries = data.entries.map(e => ({ ...e, date: toDateKey(e.date) }));
                 lsSet('entries', JSON.stringify(entries));
                 renderCalendar();
             }
@@ -609,6 +629,6 @@ if ('serviceWorker' in navigator) {
     });
 }
 </script>
-<div id="app-version" style="text-align:center; margin-top:1rem; font-size:0.65rem; color:var(--muted); font-weight:600;">V1.0.2</div>
+<div id="app-version" style="text-align:center; margin-top:1rem; font-size:0.65rem; color:var(--muted); font-weight:600;">V1.0.3</div>
 </body>
 </html>
